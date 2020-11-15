@@ -1,6 +1,6 @@
 // DOOMIT: HELL ON TEUFORT AUTOSPLITTER
 // BY 2838
-// VERSION 1.0 - 15TH NOVEMBER 2020
+// VERSION 1.1 - 15TH NOVEMBER 2020
 
 state("Doomnit Alpha")
 {
@@ -36,7 +36,9 @@ init
 startup
 {
     vars.curTime = 0.0f;
-    vars.test = 0;
+
+    settings.Add("timesplit", true, "Split on showing Time Screen");
+    settings.Add("newlvlsplit", true, "Split on entering a new level");
 }
 
 start
@@ -63,6 +65,7 @@ reset
 
 update
 {
+    // the game runs at 30 ticks per second
     float delta = (current.timer - old.timer) * (1f / 30f);
     if (delta > 0)
     {
@@ -74,20 +77,28 @@ split
 {
     // initial: check if the time text is either filled in or cleared out when the level is active or right when it goes inactive
     // correctness: is the time text the same as the measured level time?
-    // for the final split we'll have to monitor the music name variables
     bool initial = (old.endText != current.endText && (current.isActive == 1 || (old.isActive == 1 && current.isActive == 0)));
-    bool checkName1 = current.musicName1 != old.musicName1 && current.musicName1.Contains("snd_gameend");
-    bool checkName2 = current.musicName2 != old.musicName2 && current.musicName2.Contains("snd_gameend"); 
     bool correctness = (current.endText == Math.Floor(vars.curTime - vars.secondLvlStartTime).ToString());
+
+    // for the final split we'll have to monitor the music name variables
+    // there are 2 since it bounces between them
+    bool checkName1 = current.musicName1 != old.musicName1 && current.musicName1.Contains("snd_gameend");
+    bool checkName2 = current.musicName2 != old.musicName2 && current.musicName2.Contains("snd_gameend");
+    bool endSplit = (checkName1 || checkName2); 
+
     if (initial && correctness)
     {
         vars.splitOnNextScreen = true;
-        return true;
+        return settings["timesplit"];
     }
-    else if ((initial || checkName1 || checkName2) && vars.splitOnNextScreen)
+    else if (initial && vars.splitOnNextScreen)
     {
         vars.splitOnNextScreen = false;
         vars.secondLvlStartTime = vars.curTime;
+        return (endSplit || settings["newlvlsplit"]);
+    }
+    else if (endSplit)
+    {
         return true;
     }
 }
